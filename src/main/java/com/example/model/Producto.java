@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
 public class Producto {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private  Long id;
     private String codigo;
     private String nombre;
     private String categoria;

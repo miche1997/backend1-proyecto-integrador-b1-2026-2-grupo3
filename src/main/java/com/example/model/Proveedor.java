@@ -2,8 +2,8 @@ package com.example.model;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import com.example.model.Producto;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -11,7 +11,8 @@ import jakarta.persistence.Table;
 @Table(name = "proveedores")
 public class Proveedor {
     @Id
-    private String idProveedor;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long idProveedor;
     private String nombreCompleto;
     private String telefono;
     private String contrasena;
@@ -19,7 +20,7 @@ public class Proveedor {
     private List<Producto> listaProductos = new ArrayList<>();
 
     // constructor completo
-    public Proveedor(String idProveedor, String contrasena, String nombreCompleto, String telefono,
+    public Proveedor(Long idProveedor, String contrasena, String nombreCompleto, String telefono,
             LocalDateTime fechaCreacionCuenta) {
         this.idProveedor = idProveedor;
         this.contrasena = contrasena;
@@ -39,11 +40,11 @@ public class Proveedor {
     }
 
     // getters y setters
-    public String getIdProveedor() {
+    public Long getIdProveedor() {
         return idProveedor;
     }
 
-    public void setIdProveedor(String idProveedor) {
+    public void setIdProveedor(Long idProveedor) {
         this.idProveedor = idProveedor;
     }
 
@@ -88,6 +89,19 @@ public class Proveedor {
         return "Proveedor [idProveedor=" + idProveedor + ", nombreCompleto=" + nombreCompleto + ", telefono="
                 + telefono + "]";
     }
+public boolean agregarProducto(Producto producto) {
+        if (producto == null) {
+            return false;
+        }
+        //producto.setIdProveedor(this.idProveedor); 
+        return this.listaProductos.add(producto);
+    }
 
+    public boolean eliminarProducto(String idProducto) {
+        if (idProducto == null) {
+            return false;
+        }
+        return this.listaProductos.removeIf (p -> idProducto.equalsIgnoreCase(p.getCodigo()));
+    }
 
 }
