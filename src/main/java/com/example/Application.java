@@ -15,7 +15,10 @@ import com.vaadin.flow.component.page.Push;
 public class Application implements AppShellConfigurator {
 
     public static void main(String[] args) {
-        SpringApplication.run(Application.class, args);
+        SpringApplication app = new SpringApplication(Application.class);
+        // Conexión a Neon (ver NeonDatabase); DB_URL / DB_USERNAME / DB_PASSWORD tienen prioridad
+        app.setDefaultProperties(NeonDatabase.propiedades());
+        app.run(args);
     }
 
 }

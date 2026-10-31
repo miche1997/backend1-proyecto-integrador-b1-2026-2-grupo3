@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 @Entity
 @Table(name = "proveedores")
 public class Proveedor {
@@ -17,6 +18,7 @@ public class Proveedor {
     private String telefono;
     private String contrasena;
     private LocalDateTime fechaCreacionCuenta;
+    @Transient // aún no se guarda en la base de datos
     private List<Producto> listaProductos = new ArrayList<>();
 
     // constructor completo

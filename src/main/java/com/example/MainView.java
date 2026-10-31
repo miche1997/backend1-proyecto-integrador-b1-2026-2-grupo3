@@ -222,20 +222,16 @@ public class MainView extends VerticalLayout {
         VerticalLayout layout = new VerticalLayout();
         TextField idField = new TextField("ID");
         TextField nombreField = new TextField("Nombre");
-        TextField contactoField = new TextField("Contacto");
         TextField telefonoField = new TextField("Teléfono");
-        TextField emailField = new TextField("Email");
-        TextField direccionField = new TextField("Dirección");
+        TextField contrasenaField = new TextField("Contraseña");
 
-        FormLayout form = new FormLayout(idField, nombreField, contactoField, telefonoField, emailField, direccionField);
+        FormLayout form = new FormLayout(idField, nombreField, telefonoField, contrasenaField);
 
         Grid<Proveedor> grid = new Grid<>(Proveedor.class, false);
-        grid.addColumn(Proveedor::getId).setHeader("ID").setAutoWidth(true);
-        grid.addColumn(Proveedor::getNombre).setHeader("Nombre").setAutoWidth(true);
-        grid.addColumn(Proveedor::getContacto).setHeader("Contacto").setAutoWidth(true);
+        grid.addColumn(Proveedor::getIdProveedor).setHeader("ID").setAutoWidth(true);
+        grid.addColumn(Proveedor::getNombreCompleto).setHeader("Nombre").setAutoWidth(true);
         grid.addColumn(Proveedor::getTelefono).setHeader("Teléfono").setAutoWidth(true);
-        grid.addColumn(Proveedor::getEmail).setHeader("Email").setAutoWidth(true);
-        grid.addColumn(Proveedor::getDireccion).setHeader("Dirección").setAutoWidth(true);
+        grid.addColumn(Proveedor::getFechaCreacionCuenta).setHeader("Creación de cuenta").setAutoWidth(true);
 
         Runnable refrescar = () -> grid.setItems(crudService.listarTodos(Proveedor.class));
         refrescar.run();
@@ -243,27 +239,24 @@ public class MainView extends VerticalLayout {
         grid.asSingleSelect().addValueChangeListener(e -> {
             Proveedor p = e.getValue();
             if (p != null) {
-                idField.setValue(p.getId() != null ? p.getId().toString() : "");
-                nombreField.setValue(p.getNombre() != null ? p.getNombre() : "");
-                contactoField.setValue(p.getContacto() != null ? p.getContacto() : "");
+                idField.setValue(p.getIdProveedor() != null ? p.getIdProveedor().toString() : "");
+                nombreField.setValue(p.getNombreCompleto() != null ? p.getNombreCompleto() : "");
                 telefonoField.setValue(p.getTelefono() != null ? p.getTelefono() : "");
-                emailField.setValue(p.getEmail() != null ? p.getEmail() : "");
-                direccionField.setValue(p.getDireccion() != null ? p.getDireccion() : "");
+                contrasenaField.setValue(p.getContrasena() != null ? p.getContrasena() : "");
             }
         });
 
         Button btnCrear = new Button("Crear", e -> {
             Proveedor p = new Proveedor(
+                contrasenaField.getValue(),
                 nombreField.getValue(),
-                contactoField.getValue(),
                 telefonoField.getValue(),
-                emailField.getValue(),
-                direccionField.getValue()
+                LocalDateTime.now()
             );
             crudService.guardar(p);
             refrescar.run();
-            idField.setValue(p.getId() != null ? p.getId().toString() : "");
-            Notification.show("Proveedor guardado con ID: " + p.getId());
+            idField.setValue(p.getIdProveedor() != null ? p.getIdProveedor().toString() : "");
+            Notification.show("Proveedor guardado con ID: " + p.getIdProveedor());
         });
         btnCrear.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
@@ -271,7 +264,7 @@ public class MainView extends VerticalLayout {
             Proveedor p = crudService.buscarPorId(Proveedor.class, parseId(idField));
             if (p != null) {
                 grid.asSingleSelect().setValue(p);
-                Notification.show("Encontrado: " + p.getNombre());
+                Notification.show("Encontrado: " + p.getNombreCompleto());
             } else {
                 Notification.show("No encontrado");
             }
@@ -280,11 +273,9 @@ public class MainView extends VerticalLayout {
         Button btnActualizar = new Button("Actualizar", e -> {
             Proveedor p = crudService.buscarPorId(Proveedor.class, parseId(idField));
             if (p != null) {
-                p.setNombre(nombreField.getValue());
-                p.setContacto(contactoField.getValue());
+                p.setNombreCompleto(nombreField.getValue());
                 p.setTelefono(telefonoField.getValue());
-                p.setEmail(emailField.getValue());
-                p.setDireccion(direccionField.getValue());
+                p.setContrasena(contrasenaField.getValue());
                 crudService.actualizar(p);
                 refrescar.run();
                 Notification.show("Proveedor actualizado");
@@ -296,13 +287,13 @@ public class MainView extends VerticalLayout {
         Button btnEliminar = new Button("Eliminar", e -> {
             crudService.eliminar(Proveedor.class, parseId(idField));
             refrescar.run();
-            limpiar(idField, nombreField, contactoField, telefonoField, emailField, direccionField);
+            limpiar(idField, nombreField, telefonoField, contrasenaField);
             Notification.show("Proveedor eliminado");
         });
         btnEliminar.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
         Button btnLimpiar = new Button("Limpiar", e -> {
-            limpiar(idField, nombreField, contactoField, telefonoField, emailField, direccionField);
+            limpiar(idField, nombreField, telefonoField, contrasenaField);
             grid.asSingleSelect().clear();
         });
 
