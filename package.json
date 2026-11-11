@@ -32,6 +32,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.1",
+    "electron": "^45.2.1",
     "magic-string": "1.4.1",
     "rollup-plugin-brotli": "3.1.0",
     "rollup-plugin-visualizer": "7.1.1",
@@ -82,7 +83,7 @@
       "vite": "8.3.0",
       "vite-plugin-checker": "0.14.5"
     },
-    "hash": "89f643d8ebc3e18761742aeb7c12b58c8e4b7515b9f5a5dbc0ce7c2794f5c041"
+    "hash": "fc3c34bec426a47ea6a80966672f377a49fc4d0628d922a7dbe62c187d731101"
   },
   "type": "module",
   "overrides": {

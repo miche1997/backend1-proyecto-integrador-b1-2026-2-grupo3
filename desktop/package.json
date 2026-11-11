@@ -1,0 +1,40 @@
+{
+  "name": "inventario-desktop",
+  "version": "1.0.0",
+  "description": "Versión de escritorio del Sistema de Inventario (Spring Boot + Vaadin dentro de Electron)",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.example.inventario",
+    "productName": "Sistema de Inventario",
+    "files": [
+      "main.js",
+      "cargando.html"
+    ],
+    "extraResources": [
+      {
+        "from": "../target/app-1.0-SNAPSHOT.jar",
+        "to": "app.jar"
+      },
+      {
+        "from": "jre",
+        "to": "jre"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
+  }
+}
