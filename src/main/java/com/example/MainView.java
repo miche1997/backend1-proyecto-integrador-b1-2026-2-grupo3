@@ -2,7 +2,12 @@ package com.example;
 
 import java.time.LocalDateTime;
 
+import org.atmosphere.interceptor.AtmosphereResourceStateRecovery.B;
+import org.jetbrains.kotlin.it.unimi.dsi.fastutil.objects.t;
+
+import com.example.model.Administrador;
 import com.example.model.Categoria;
+import com.example.model.Cupones;
 import com.example.model.Producto;
 import com.example.model.Proveedor;
 import com.example.model.Usuario;
@@ -39,6 +44,8 @@ public class MainView extends VerticalLayout {
         tabs.add("Categorías", crearSeccionCategorias());
         tabs.add("Proveedores", crearSeccionProveedores());
         tabs.add("Usuarios", crearSeccionUsuarios());
+        tabs.add("Cupones", crearSeccionCupones());
+        tabs.add("Administradores", crearSeccionAdministrador());
 
         add(new H2("Sistema de Inventario - CRUD"), tabs);
     }
@@ -403,6 +410,174 @@ public class MainView extends VerticalLayout {
         });
 
         layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar), grid);
+        return layout;
+    }
+    // ==========================================
+    // 5. Cupones 
+    // ==========================================
+    private Component crearSeccionCupones() {
+        VerticalLayout layout = new VerticalLayout();
+        TextField idField = new TextField("ID");
+        TextField codigoField = new TextField("Código");
+        TextField porcentajeField = new TextField("Porcentaje");
+        TextField usosField = new TextField("Usos");
+        TextField estadoField = new TextField("Estado");
+        TextField fechaCreacionField = new TextField("Fecha de Creación");
+
+        FormLayout form = new FormLayout(idField, codigoField, porcentajeField, usosField, estadoField, fechaCreacionField);
+
+        Grid<Cupones> grid = new Grid<>(Cupones.class, false);
+        grid.addColumn(Cupones::getId).setHeader("ID").setAutoWidth(true);
+        grid.addColumn(Cupones::getCodigo).setHeader("Código").setAutoWidth(true);
+        grid.addColumn(Cupones::getPorcentaje).setHeader("Porcentaje").setAutoWidth(true);
+        grid.addColumn(Cupones::getUsos).setHeader("Usos").setAutoWidth(true);
+        grid.addColumn(Cupones::getEstado).setHeader("Estado").setAutoWidth(true);
+        grid.addColumn(c -> c.getFechaCreacion() != null ? c.getFechaCreacion().toString() : "").setHeader("Fecha de Creación").setAutoWidth(true);
+
+        Runnable refrescar = () -> grid.setItems(crudService.listarTodos(Cupones.class));
+        refrescar.run();
+
+        grid.asSingleSelect() .addValueChangeListener(e -> {
+            Cupones c = e.getOldValue();
+            if (c != null) {
+                idField.setValue(c.getId() != null ? c.getId().toString() : "");
+                codigoField.setValue(c.getCodigo() != null ? c.getCodigo() : "");
+                porcentajeField.setValue(String.valueOf(c.getPorcentaje()));
+                usosField.setValue(String.valueOf(c.getUsos()));
+                estadoField.setValue(c.getEstado() != null ? c.getEstado() : "");
+                fechaCreacionField.setValue(c.getFechaCreacion() != null ? c.getFechaCreacion().toString() : "");
+            }
+        }); 
+
+        Button btnCrear = new Button("Crear", e -> {
+            Cupones c = new Cupones(
+                codigoField.getValue(),
+                parseDouble(porcentajeField.getValue()),
+                parseInt(usosField.getValue()),
+                estadoField.getValue(),
+                LocalDateTime.now()
+            );
+            crudService.guardar(c);
+            refrescar.run();
+            idField.setValue(c.getId() != null ? c.getId().toString() : "");
+            Notification.show("Cupón guardado con ID: " + c.getId());
+        });
+        btnCrear.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button btnConsultar = new Button("Consultar", e -> {
+            Cupones c = crudService.buscarPorId(Cupones.class, parseId(idField));
+            if (c != null) {
+                grid.asSingleSelect().setValue(c);
+                Notification.show("Encontrado: " + c.getCodigo());
+            } else {
+                Notification.show("No encontrado");
+            }
+        });
+
+        Button btnActualizar = new Button("Actualizar", e -> {
+            Cupones c = crudService.buscarPorId(Cupones.class, parseId(idField));
+            if (c != null) {
+                c.setCodigo(codigoField.getValue());
+                c.setPorcentaje(parseDouble(porcentajeField.getValue()));
+                c.setUsos(parseInt(usosField.getValue()));
+                c.setEstado(estadoField.getValue());
+                crudService.actualizar(c);
+                refrescar.run();
+                Notification.show("Cupón actualizado");
+            } else {
+                Notification.show("ID no encontrado");
+            }
+        });
+
+        Button btnEliminar = new Button("Eliminar", e -> {
+            crudService.eliminar(Cupones.class, parseId(idField));
+            refrescar.run();
+            limpiar(idField, codigoField, porcentajeField, usosField, estadoField, fechaCreacionField);
+            Notification.show("Cupón eliminado");
+        });
+
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar), grid);
+        return layout;
+    }
+    // ==========================================
+    // 6. ADMINISREADOR
+    // ==========================================
+    private Component crearSeccionAdministrador() {
+        VerticalLayout layout = new VerticalLayout();
+        TextField idField = new TextField("ID");
+        TextField usuarioField = new TextField("Usuario");
+        TextField contrasenaField = new TextField("Contraseña");
+        TextField estadoField = new TextField("Estado");
+        TextField fechaRegistroField = new TextField("Fecha de Registro");
+
+        FormLayout form = new FormLayout(idField, usuarioField, contrasenaField, estadoField, fechaRegistroField);
+
+        Grid<Administrador> grid = new Grid<>(Administrador.class, false);
+        grid.addColumn(Administrador::getId).setHeader("ID").setAutoWidth(true);
+        grid.addColumn(Administrador::getUsuarioAdministrador).setHeader("Usuario").setAutoWidth(true);
+        grid.addColumn(Administrador::getContrasena).setHeader("Contraseña").setAutoWidth(true);
+        grid.addColumn(Administrador::getEstado).setHeader("Estado").setAutoWidth(true);
+        grid.addColumn(a -> a.getFechaRegistro() != null ? a.getFechaRegistro().toString() : "").setHeader("Fecha de Registro").setAutoWidth(true);
+
+        Runnable refrescar = () -> grid.setItems(crudService.listarTodos(Administrador.class));
+        refrescar.run();
+
+        grid.asSingleSelect().addValueChangeListener(e -> {
+            Administrador a = e.getValue();
+            if (a != null) {
+                idField.setValue(Long.toString(a.getId()));
+                usuarioField.setValue(a.getUsuarioAdministrador() != null ? a.getUsuarioAdministrador() : "");
+                contrasenaField.setValue(a.getContrasena() != null ? a.getContrasena() : "");
+                estadoField.setValue(a.getEstado() != null ? a.getEstado() : "");
+                fechaRegistroField.setValue(a.getFechaRegistro() != null ? a.getFechaRegistro().toString() : "");
+            }
+        });
+        Button btnCrear = new Button("Crear", e -> {
+            Administrador a = new Administrador(
+                usuarioField.getValue(),
+                contrasenaField.getValue(),
+                estadoField.getValue(),
+                LocalDateTime.now()
+            );
+            crudService.guardar(a);
+            refrescar.run();
+            idField.setValue(Long.toString(a.getId()));
+            Notification.show("Administrador guardado con ID: " + a.getId());
+        });
+        btnCrear.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button btnConsultar = new Button("Consultar", e -> {
+            Administrador a = crudService.buscarPorId(Administrador.class, parseId(idField));
+            if (a != null) {
+                grid.asSingleSelect().setValue(a);
+                Notification.show("Encontrado: " + a.getUsuarioAdministrador());
+            } else {
+                Notification.show("No encontrado");
+            }
+        });
+
+        Button btnActualizar = new Button("Actualizar", e -> {
+            Administrador a = crudService.buscarPorId(Administrador.class, parseId(idField));
+            if (a != null) {
+                a.setUsuarioAdministrador(usuarioField.getValue());
+                a.setContrasena(contrasenaField.getValue());
+                a.setEstado(estadoField.getValue());
+                crudService.actualizar(a);
+                refrescar.run();
+                Notification.show("Administrador actualizado");
+            } else {
+                Notification.show("ID no encontrado");
+            }
+        });
+
+        Button btnEliminar = new Button("Eliminar", e -> {
+            crudService.eliminar(Administrador.class, parseId(idField));
+            refrescar.run();
+            limpiar(idField, usuarioField, contrasenaField, estadoField, fechaRegistroField);
+            Notification.show("Administrador eliminado");
+        });
+
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar), grid);
         return layout;
     }
 
