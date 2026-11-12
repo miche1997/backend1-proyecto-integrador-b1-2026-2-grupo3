@@ -1,5 +1,9 @@
 package com.example;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 
 import org.atmosphere.interceptor.AtmosphereResourceStateRecovery.B;
@@ -12,11 +16,13 @@ import com.example.model.Producto;
 import com.example.model.Proveedor;
 import com.example.model.Usuario;
 import com.example.service.CrudService;
+import com.example.service.PdfReportService;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -25,15 +31,21 @@ import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.StreamResource;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 @PageTitle("Gestión CRUD - Sistema de Inventario")
 @Route("")
 public class MainView extends VerticalLayout {
 
     private final CrudService crudService;
+    private final PdfReportService pdfReportService;
 
-    public MainView(CrudService crudService) {
+    public MainView(CrudService crudService, PdfReportService pdfReportService) {
         this.crudService = crudService;
+        this.pdfReportService = pdfReportService;
         setSizeFull();
         setPadding(true);
         setSpacing(true);
@@ -141,8 +153,51 @@ public class MainView extends VerticalLayout {
             grid.asSingleSelect().clear();
         });
 
-        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar), grid);
+        StreamResource excelResource = new StreamResource("productos.xlsx", this::crearExcelProductos);
+        excelResource.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        Anchor descargarExcel = new Anchor(excelResource, "Descargar Excel");
+        descargarExcel.getElement().setAttribute("download", true);
+
+        StreamResource pdfResource = new StreamResource("productos.pdf", () ->
+                new ByteArrayInputStream(pdfReportService.generarReporteProductos(crudService.listarTodos(Producto.class))));
+        pdfResource.setContentType("application/pdf");
+        Anchor descargarPdf = new Anchor(pdfResource, "Descargar PDF");
+        descargarPdf.getElement().setAttribute("download", true);
+
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar),
+                new HorizontalLayout(descargarExcel, descargarPdf), grid);
         return layout;
+    }
+
+    private InputStream crearExcelProductos() {
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Productos");
+            Row encabezado = sheet.createRow(0);
+            String[] columnas = {"ID", "Código", "Nombre", "Categoría", "Precio", "Stock"};
+            for (int i = 0; i < columnas.length; i++) {
+                encabezado.createCell(i).setCellValue(columnas[i]);
+            }
+
+            int fila = 1;
+            for (Producto producto : crudService.listarTodos(Producto.class)) {
+                Row row = sheet.createRow(fila++);
+                row.createCell(0).setCellValue(producto.getId() == null ? "" : producto.getId().toString());
+                row.createCell(1).setCellValue(producto.getCodigo() == null ? "" : producto.getCodigo());
+                row.createCell(2).setCellValue(producto.getNombre() == null ? "" : producto.getNombre());
+                row.createCell(3).setCellValue(producto.getCategoria() == null ? "" : producto.getCategoria());
+                row.createCell(4).setCellValue(producto.getPrecio() == null ? 0 : producto.getPrecio());
+                row.createCell(5).setCellValue(producto.getStock() == null ? 0 : producto.getStock());
+            }
+
+            for (int i = 0; i < columnas.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            workbook.write(output);
+            return new ByteArrayInputStream(output.toByteArray());
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo generar el archivo Excel", e);
+        }
     }
 
     // ==========================================
