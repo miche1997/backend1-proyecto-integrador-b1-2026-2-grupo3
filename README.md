@@ -12,6 +12,20 @@ Capa de Presentación (UI)Desarrollada con Vaadin 25, maneja componentes reactiv
 Capa de Servicio y Negocio: Implementada con Spring Boot 4, orquesta las reglas de validación, lógica de cupones y operaciones CRUD.
 Capa de Datos: En esta fase inicial, las entidades residen en memoria/colecciones locales, preparadas para acoplarse a repositorios JPA/Hibernate en fases posteriores usando postqres neo. tech 
 
+## Modelo Entidad-Relación
+
+![Modelo Entidad-Relación](docs/modelo-entidad-relacion.svg)
+
+| Relación | Cardinalidad | Clave foránea |
+|---|---|---|
+| Categoría agrupa Productos | 1 : N | `productos.categoria_id` |
+| Proveedor suministra Productos | 1 : N | `productos.proveedor_id` |
+| Usuario realiza Pedidos | 1 : N | `pedidos.usuario_id` |
+| Producto se incluye en Pedidos | 1 : N | `pedidos.producto_id` |
+| Cupón se aplica a Pedidos (opcional) | 0..1 : N | `pedidos.cupon_id` |
+
+La tabla `administradores` es independiente y no tiene relaciones con las demás.
+
 ## Tecnologías
 
 - Java 25

@@ -6,8 +6,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
 @Entity
 @Table(name = "proveedores")
 public class Proveedor {
@@ -18,7 +18,8 @@ public class Proveedor {
     private String telefono;
     private String contrasena;
     private LocalDateTime fechaCreacionCuenta;
-    @Transient // aún no se guarda en la base de datos
+    // Relación 1:N -> un proveedor suministra muchos productos (la FK está en productos.proveedor_id)
+    @OneToMany(mappedBy = "proveedor")
     private List<Producto> listaProductos = new ArrayList<>();
 
     // constructor completo
@@ -87,6 +88,18 @@ public class Proveedor {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Proveedor otro)) return false;
+        return idProveedor != null && idProveedor.equals(otro.idProveedor);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hashCode(idProveedor);
+    }
+
+    @Override
     public String toString() {
         return "Proveedor [idProveedor=" + idProveedor + ", nombreCompleto=" + nombreCompleto + ", telefono="
                 + telefono + "]";
@@ -95,7 +108,7 @@ public boolean agregarProducto(Producto producto) {
         if (producto == null) {
             return false;
         }
-        //producto.setIdProveedor(this.idProveedor); 
+        producto.setProveedor(this);
         return this.listaProductos.add(producto);
     }
 

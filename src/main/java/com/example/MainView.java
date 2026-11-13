@@ -20,6 +20,7 @@ import com.example.service.PdfReportService;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Anchor;
@@ -33,6 +34,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
 import org.apache.poi.ss.usermodel.Row;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -42,6 +44,7 @@ public class MainView extends VerticalLayout {
 
     private final CrudService crudService;
     private final PdfReportService pdfReportService;
+    private Runnable recargarCombosProductos = () -> { };
 
     public MainView(CrudService crudService, PdfReportService pdfReportService) {
         this.crudService = crudService;
@@ -58,6 +61,8 @@ public class MainView extends VerticalLayout {
         tabs.add("Usuarios", crearSeccionUsuarios());
         tabs.add("Cupones", crearSeccionCupones());
         tabs.add("Administradores", crearSeccionAdministrador());
+        // Al cambiar de pestaña se recargan los desplegables (por si se crearon categorías/proveedores nuevos)
+        tabs.addSelectedChangeListener(e -> recargarCombosProductos.run());
 
         add(new H2("Sistema de Inventario - CRUD"), tabs);
     }
@@ -70,22 +75,39 @@ public class MainView extends VerticalLayout {
         TextField idField = new TextField("ID");
         TextField codigoField = new TextField("Código");
         TextField nombreField = new TextField("Nombre");
-        TextField categoriaField = new TextField("Categoría");
+        ComboBox<Categoria> categoriaCombo = new ComboBox<>("Categoría");
+        categoriaCombo.setItemLabelGenerator(Categoria::getNombre);
+        ComboBox<Proveedor> proveedorCombo = new ComboBox<>("Proveedor");
+        proveedorCombo.setItemLabelGenerator(Proveedor::getNombreCompleto);
         TextField precioField = new TextField("Precio");
         TextField stockField = new TextField("Stock");
 
-        FormLayout form = new FormLayout(idField, codigoField, nombreField, categoriaField, precioField, stockField);
+        recargarCombosProductos = () -> {
+            categoriaCombo.setItems(crudService.listarTodos(Categoria.class));
+            proveedorCombo.setItems(crudService.listarTodos(Proveedor.class));
+        };
+        recargarCombosProductos.run();
+
+        FormLayout form = new FormLayout(idField, codigoField, nombreField, categoriaCombo, proveedorCombo,
+                precioField, stockField);
 
         Grid<Producto> grid = new Grid<>(Producto.class, false);
         grid.addColumn(Producto::getId).setHeader("ID").setAutoWidth(true);
         grid.addColumn(Producto::getCodigo).setHeader("Código").setAutoWidth(true);
         grid.addColumn(Producto::getNombre).setHeader("Nombre").setAutoWidth(true);
-        grid.addColumn(Producto::getCategoria).setHeader("Categoría").setAutoWidth(true);
+        grid.addColumn(this::nombreCategoria).setHeader("Categoría").setAutoWidth(true);
+        grid.addColumn(this::nombreProveedor).setHeader("Proveedor").setAutoWidth(true);
         grid.addColumn(Producto::getPrecio).setHeader("Precio").setAutoWidth(true);
         grid.addColumn(Producto::getStock).setHeader("Stock").setAutoWidth(true);
 
         Runnable refrescar = () -> grid.setItems(crudService.listarTodos(Producto.class));
         refrescar.run();
+
+        Runnable limpiarFormulario = () -> {
+            limpiar(idField, codigoField, nombreField, precioField, stockField);
+            categoriaCombo.clear();
+            proveedorCombo.clear();
+        };
 
         grid.asSingleSelect().addValueChangeListener(e -> {
             Producto p = e.getValue();
@@ -93,7 +115,8 @@ public class MainView extends VerticalLayout {
                 idField.setValue(p.getId() != null ? p.getId().toString() : "");
                 codigoField.setValue(p.getCodigo() != null ? p.getCodigo() : "");
                 nombreField.setValue(p.getNombre() != null ? p.getNombre() : "");
-                categoriaField.setValue(p.getCategoria() != null ? p.getCategoria() : "");
+                categoriaCombo.setValue(p.getCategoria());
+                proveedorCombo.setValue(p.getProveedor());
                 precioField.setValue(p.getPrecio() != null ? p.getPrecio().toString() : "");
                 stockField.setValue(p.getStock() != null ? p.getStock().toString() : "");
             }
@@ -103,7 +126,8 @@ public class MainView extends VerticalLayout {
             Producto p = new Producto(
                 codigoField.getValue(),
                 nombreField.getValue(),
-                categoriaField.getValue(),
+                categoriaCombo.getValue(),
+                proveedorCombo.getValue(),
                 parseDouble(precioField.getValue()),
                 parseInt(stockField.getValue())
             );
@@ -129,7 +153,8 @@ public class MainView extends VerticalLayout {
             if (p != null) {
                 p.setCodigo(codigoField.getValue());
                 p.setNombre(nombreField.getValue());
-                p.setCategoria(categoriaField.getValue());
+                p.setCategoria(categoriaCombo.getValue());
+                p.setProveedor(proveedorCombo.getValue());
                 p.setPrecio(parseDouble(precioField.getValue()));
                 p.setStock(parseInt(stockField.getValue()));
                 crudService.actualizar(p);
@@ -141,26 +166,35 @@ public class MainView extends VerticalLayout {
         });
 
         Button btnEliminar = new Button("Eliminar", e -> {
-            crudService.eliminar(Producto.class, parseId(idField));
-            refrescar.run();
-            limpiar(idField, codigoField, nombreField, categoriaField, precioField, stockField);
-            Notification.show("Producto eliminado");
+            if (eliminarConControl(Producto.class, parseId(idField))) {
+                refrescar.run();
+                limpiarFormulario.run();
+                Notification.show("Producto eliminado");
+            }
         });
         btnEliminar.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
         Button btnLimpiar = new Button("Limpiar", e -> {
-            limpiar(idField, codigoField, nombreField, categoriaField, precioField, stockField);
+            limpiarFormulario.run();
             grid.asSingleSelect().clear();
         });
 
         Component[] descargas = crearBotonesDescarga("productos", "Inventario de productos", Producto.class,
-                new String[]{"ID", "Código", "Nombre", "Categoría", "Precio", "Stock"},
-                Producto::getId, Producto::getCodigo, Producto::getNombre, Producto::getCategoria,
-                Producto::getPrecio, Producto::getStock);
+                new String[]{"ID", "Código", "Nombre", "Categoría", "Proveedor", "Precio", "Stock"},
+                Producto::getId, Producto::getCodigo, Producto::getNombre, this::nombreCategoria,
+                this::nombreProveedor, Producto::getPrecio, Producto::getStock);
 
         layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar,
                 descargas[0], descargas[1]), grid);
         return layout;
+    }
+
+    private Object nombreCategoria(Producto p) {
+        return p.getCategoria() != null ? p.getCategoria().getNombre() : "";
+    }
+
+    private Object nombreProveedor(Producto p) {
+        return p.getProveedor() != null ? p.getProveedor().getNombreCompleto() : "";
     }
 
     // ==========================================
@@ -224,10 +258,11 @@ public class MainView extends VerticalLayout {
         });
 
         Button btnEliminar = new Button("Eliminar", e -> {
-            crudService.eliminar(Categoria.class, parseId(idField));
-            refrescar.run();
-            limpiar(idField, nombreField, descripcionField);
-            Notification.show("Categoría eliminada");
+            if (eliminarConControl(Categoria.class, parseId(idField))) {
+                refrescar.run();
+                limpiar(idField, nombreField, descripcionField);
+                Notification.show("Categoría eliminada");
+            }
         });
         btnEliminar.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
@@ -315,10 +350,11 @@ public class MainView extends VerticalLayout {
         });
 
         Button btnEliminar = new Button("Eliminar", e -> {
-            crudService.eliminar(Proveedor.class, parseId(idField));
-            refrescar.run();
-            limpiar(idField, nombreField, telefonoField, contrasenaField);
-            Notification.show("Proveedor eliminado");
+            if (eliminarConControl(Proveedor.class, parseId(idField))) {
+                refrescar.run();
+                limpiar(idField, nombreField, telefonoField, contrasenaField);
+                Notification.show("Proveedor eliminado");
+            }
         });
         btnEliminar.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
@@ -426,10 +462,11 @@ public class MainView extends VerticalLayout {
         });
 
         Button btnEliminar = new Button("Eliminar", e -> {
-            crudService.eliminar(Usuario.class, parseId(idField));
-            refrescar.run();
-            limpiar(idField, nombreField, apellidoField, emailField, telefonoField, direccionField, rolField, estadoField);
-            Notification.show("Usuario eliminado");
+            if (eliminarConControl(Usuario.class, parseId(idField))) {
+                refrescar.run();
+                limpiar(idField, nombreField, apellidoField, emailField, telefonoField, direccionField, rolField, estadoField);
+                Notification.show("Usuario eliminado");
+            }
         });
         btnEliminar.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
@@ -525,10 +562,11 @@ public class MainView extends VerticalLayout {
         });
 
         Button btnEliminar = new Button("Eliminar", e -> {
-            crudService.eliminar(Cupones.class, parseId(idField));
-            refrescar.run();
-            limpiar(idField, codigoField, porcentajeField, usosField, estadoField, fechaCreacionField);
-            Notification.show("Cupón eliminado");
+            if (eliminarConControl(Cupones.class, parseId(idField))) {
+                refrescar.run();
+                limpiar(idField, codigoField, porcentajeField, usosField, estadoField, fechaCreacionField);
+                Notification.show("Cupón eliminado");
+            }
         });
         btnEliminar.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
@@ -618,10 +656,11 @@ public class MainView extends VerticalLayout {
         });
 
         Button btnEliminar = new Button("Eliminar", e -> {
-            crudService.eliminar(Administrador.class, parseId(idField));
-            refrescar.run();
-            limpiar(idField, usuarioField, contrasenaField, estadoField, fechaRegistroField);
-            Notification.show("Administrador eliminado");
+            if (eliminarConControl(Administrador.class, parseId(idField))) {
+                refrescar.run();
+                limpiar(idField, usuarioField, contrasenaField, estadoField, fechaRegistroField);
+                Notification.show("Administrador eliminado");
+            }
         });
         btnEliminar.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
@@ -721,6 +760,23 @@ public class MainView extends VerticalLayout {
     // ==========================================
     // MÉTODOS AUXILIARES
     // ==========================================
+
+    /**
+     * Elimina un registro y avisa si no se puede porque otros registros dependen de él
+     * (por ejemplo, una categoría que todavía tiene productos).
+     */
+    private boolean eliminarConControl(Class<?> clase, Long id) {
+        try {
+            if (!crudService.eliminar(clase, id)) {
+                Notification.show("ID no encontrado");
+                return false;
+            }
+            return true;
+        } catch (DataIntegrityViolationException ex) {
+            Notification.show("No se puede eliminar: hay otros registros relacionados con este");
+            return false;
+        }
+    }
     private Long parseId(TextField field) {
         try {
             return Long.parseLong(field.getValue().trim());

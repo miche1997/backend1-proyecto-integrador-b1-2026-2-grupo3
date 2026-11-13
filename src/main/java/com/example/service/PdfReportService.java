@@ -17,10 +17,12 @@ import com.lowagie.text.pdf.PdfWriter;
 public class PdfReportService {
 
     public byte[] generarReporteProductos(List<Producto> productos) {
-        String[] encabezados = {"ID", "Código", "Nombre", "Categoría", "Precio", "Stock"};
+        String[] encabezados = {"ID", "Código", "Nombre", "Categoría", "Proveedor", "Precio", "Stock"};
         List<List<Object>> filas = productos.stream()
                 .map(p -> List.<Object>of(texto(p.getId()), texto(p.getCodigo()), texto(p.getNombre()),
-                        texto(p.getCategoria()), texto(p.getPrecio()), texto(p.getStock())))
+                        p.getCategoria() != null ? texto(p.getCategoria().getNombre()) : "",
+                        p.getProveedor() != null ? texto(p.getProveedor().getNombreCompleto()) : "",
+                        texto(p.getPrecio()), texto(p.getStock())))
                 .toList();
         return generarReporte("Inventario de productos", encabezados, filas);
     }
