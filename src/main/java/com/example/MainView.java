@@ -5,9 +5,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
-
-import org.atmosphere.interceptor.AtmosphereResourceStateRecovery.B;
-import org.jetbrains.kotlin.it.unimi.dsi.fastutil.objects.t;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 
 import com.example.model.Administrador;
 import com.example.model.Categoria;
@@ -153,57 +153,14 @@ public class MainView extends VerticalLayout {
             grid.asSingleSelect().clear();
         });
 
-        StreamResource excelResource = new StreamResource("productos.xlsx", this::crearExcelProductos);
-        excelResource.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        Anchor descargarExcel = new Anchor(excelResource, "");
-        descargarExcel.getElement().setAttribute("download", true);
-        Button btnExcel = new Button("Descargar Excel");
-        btnExcel.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
-        descargarExcel.add(btnExcel);
-
-        StreamResource pdfResource = new StreamResource("productos.pdf", () ->
-                new ByteArrayInputStream(pdfReportService.generarReporteProductos(crudService.listarTodos(Producto.class))));
-        pdfResource.setContentType("application/pdf");
-        Anchor descargarPdf = new Anchor(pdfResource, "");
-        descargarPdf.getElement().setAttribute("download", true);
-        Button btnPdf = new Button("Descargar PDF");
-        btnPdf.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
-        descargarPdf.add(btnPdf);
+        Component[] descargas = crearBotonesDescarga("productos", "Inventario de productos", Producto.class,
+                new String[]{"ID", "Código", "Nombre", "Categoría", "Precio", "Stock"},
+                Producto::getId, Producto::getCodigo, Producto::getNombre, Producto::getCategoria,
+                Producto::getPrecio, Producto::getStock);
 
         layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar,
-                descargarExcel, descargarPdf), grid);
+                descargas[0], descargas[1]), grid);
         return layout;
-    }
-
-    private InputStream crearExcelProductos() {
-        try (XSSFWorkbook workbook = new XSSFWorkbook();
-             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            Sheet sheet = workbook.createSheet("Productos");
-            Row encabezado = sheet.createRow(0);
-            String[] columnas = {"ID", "Código", "Nombre", "Categoría", "Precio", "Stock"};
-            for (int i = 0; i < columnas.length; i++) {
-                encabezado.createCell(i).setCellValue(columnas[i]);
-            }
-
-            int fila = 1;
-            for (Producto producto : crudService.listarTodos(Producto.class)) {
-                Row row = sheet.createRow(fila++);
-                row.createCell(0).setCellValue(producto.getId() == null ? "" : producto.getId().toString());
-                row.createCell(1).setCellValue(producto.getCodigo() == null ? "" : producto.getCodigo());
-                row.createCell(2).setCellValue(producto.getNombre() == null ? "" : producto.getNombre());
-                row.createCell(3).setCellValue(producto.getCategoria() == null ? "" : producto.getCategoria());
-                row.createCell(4).setCellValue(producto.getPrecio() == null ? 0 : producto.getPrecio());
-                row.createCell(5).setCellValue(producto.getStock() == null ? 0 : producto.getStock());
-            }
-
-            for (int i = 0; i < columnas.length; i++) {
-                sheet.autoSizeColumn(i);
-            }
-            workbook.write(output);
-            return new ByteArrayInputStream(output.toByteArray());
-        } catch (IOException e) {
-            throw new IllegalStateException("No se pudo generar el archivo Excel", e);
-        }
     }
 
     // ==========================================
@@ -279,7 +236,12 @@ public class MainView extends VerticalLayout {
             grid.asSingleSelect().clear();
         });
 
-        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar), grid);
+        Component[] descargas = crearBotonesDescarga("categorias", "Listado de categorías", Categoria.class,
+                new String[]{"ID", "Nombre", "Descripción"},
+                Categoria::getId, Categoria::getNombre, Categoria::getDescripcion);
+
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar,
+                descargas[0], descargas[1]), grid);
         return layout;
     }
 
@@ -365,7 +327,13 @@ public class MainView extends VerticalLayout {
             grid.asSingleSelect().clear();
         });
 
-        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar), grid);
+        Component[] descargas = crearBotonesDescarga("proveedores", "Listado de proveedores", Proveedor.class,
+                new String[]{"ID", "Nombre", "Teléfono", "Creación de cuenta"},
+                Proveedor::getIdProveedor, Proveedor::getNombreCompleto, Proveedor::getTelefono,
+                Proveedor::getFechaCreacionCuenta);
+
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar,
+                descargas[0], descargas[1]), grid);
         return layout;
     }
 
@@ -470,7 +438,13 @@ public class MainView extends VerticalLayout {
             grid.asSingleSelect().clear();
         });
 
-        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar), grid);
+        Component[] descargas = crearBotonesDescarga("usuarios", "Listado de usuarios", Usuario.class,
+                new String[]{"ID", "Nombre", "Apellido", "Email", "Teléfono", "Rol", "Estado"},
+                Usuario::getId, Usuario::getNombre, Usuario::getApellido, Usuario::getEmail,
+                Usuario::getTelefono, Usuario::getRol, Usuario::getEstado);
+
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar,
+                descargas[0], descargas[1]), grid);
         return layout;
     }
     // ==========================================
@@ -557,7 +531,13 @@ public class MainView extends VerticalLayout {
             Notification.show("Cupón eliminado");
         });
 
-        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar), grid);
+        Component[] descargas = crearBotonesDescarga("cupones", "Listado de cupones", Cupones.class,
+                new String[]{"ID", "Código", "Porcentaje", "Usos", "Estado", "Fecha de Creación"},
+                Cupones::getId, Cupones::getCodigo, Cupones::getPorcentaje, Cupones::getUsos,
+                Cupones::getEstado, Cupones::getFechaCreacion);
+
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar,
+                descargas[0], descargas[1]), grid);
         return layout;
     }
     // ==========================================
@@ -638,8 +618,92 @@ public class MainView extends VerticalLayout {
             Notification.show("Administrador eliminado");
         });
 
-        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar), grid);
+        Component[] descargas = crearBotonesDescarga("administradores", "Listado de administradores",
+                Administrador.class,
+                new String[]{"ID", "Usuario", "Estado", "Fecha de Registro"},
+                Administrador::getId, Administrador::getUsuarioAdministrador, Administrador::getEstado,
+                Administrador::getFechaRegistro);
+
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar,
+                descargas[0], descargas[1]), grid);
         return layout;
+    }
+
+    // ==========================================
+    // DESCARGAS (EXCEL / PDF) GENÉRICAS
+    // ==========================================
+
+    /**
+     * Crea los botones "Descargar Excel" y "Descargar PDF" para cualquier entidad.
+     * Los datos se leen de la base de datos en el momento de hacer clic.
+     */
+    @SafeVarargs
+    private <T> Component[] crearBotonesDescarga(String nombreArchivo, String titulo, Class<T> clase,
+                                                 String[] columnas, Function<T, Object>... valores) {
+        StreamResource excelResource = new StreamResource(nombreArchivo + ".xlsx",
+                () -> crearExcel(titulo, columnas, obtenerFilas(clase, valores)));
+        excelResource.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        Anchor descargarExcel = new Anchor(excelResource, "");
+        descargarExcel.getElement().setAttribute("download", true);
+        Button btnExcel = new Button("Descargar Excel");
+        btnExcel.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+        descargarExcel.add(btnExcel);
+
+        StreamResource pdfResource = new StreamResource(nombreArchivo + ".pdf",
+                () -> new ByteArrayInputStream(
+                        pdfReportService.generarReporte(titulo, columnas, obtenerFilas(clase, valores))));
+        pdfResource.setContentType("application/pdf");
+        Anchor descargarPdf = new Anchor(pdfResource, "");
+        descargarPdf.getElement().setAttribute("download", true);
+        Button btnPdf = new Button("Descargar PDF");
+        btnPdf.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+        descargarPdf.add(btnPdf);
+
+        return new Component[]{descargarExcel, descargarPdf};
+    }
+
+    private <T> List<List<Object>> obtenerFilas(Class<T> clase, Function<T, Object>[] valores) {
+        List<List<Object>> filas = new ArrayList<>();
+        for (T item : crudService.listarTodos(clase)) {
+            List<Object> fila = new ArrayList<>();
+            for (Function<T, Object> valor : valores) {
+                fila.add(valor.apply(item));
+            }
+            filas.add(fila);
+        }
+        return filas;
+    }
+
+    private InputStream crearExcel(String nombreHoja, String[] columnas, List<List<Object>> filas) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet(nombreHoja.length() > 31 ? nombreHoja.substring(0, 31) : nombreHoja);
+            Row encabezado = sheet.createRow(0);
+            for (int i = 0; i < columnas.length; i++) {
+                encabezado.createCell(i).setCellValue(columnas[i]);
+            }
+
+            int numFila = 1;
+            for (List<Object> fila : filas) {
+                Row row = sheet.createRow(numFila++);
+                for (int i = 0; i < fila.size(); i++) {
+                    Object valor = fila.get(i);
+                    if (valor instanceof Number numero) {
+                        row.createCell(i).setCellValue(numero.doubleValue());
+                    } else {
+                        row.createCell(i).setCellValue(valor == null ? "" : valor.toString());
+                    }
+                }
+            }
+
+            for (int i = 0; i < columnas.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+            workbook.write(output);
+            return new ByteArrayInputStream(output.toByteArray());
+        } catch (IOException e) {
+            throw new IllegalStateException("No se pudo generar el archivo Excel", e);
+        }
     }
 
     // ==========================================

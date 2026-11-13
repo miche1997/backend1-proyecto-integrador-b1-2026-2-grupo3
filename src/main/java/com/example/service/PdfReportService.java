@@ -17,27 +17,35 @@ import com.lowagie.text.pdf.PdfWriter;
 public class PdfReportService {
 
     public byte[] generarReporteProductos(List<Producto> productos) {
+        String[] encabezados = {"ID", "Código", "Nombre", "Categoría", "Precio", "Stock"};
+        List<List<Object>> filas = productos.stream()
+                .map(p -> List.<Object>of(texto(p.getId()), texto(p.getCodigo()), texto(p.getNombre()),
+                        texto(p.getCategoria()), texto(p.getPrecio()), texto(p.getStock())))
+                .toList();
+        return generarReporte("Inventario de productos", encabezados, filas);
+    }
+
+    /**
+     * Genera un PDF con una tabla a partir de encabezados y filas genéricas.
+     */
+    public byte[] generarReporte(String titulo, String[] encabezados, List<List<Object>> filas) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4.rotate());
         try {
             PdfWriter.getInstance(document, output);
             document.open();
-            document.add(new Paragraph("Inventario de productos"));
+            document.add(new Paragraph(titulo));
             document.add(new Paragraph(" "));
 
-            PdfPTable tabla = new PdfPTable(6);
+            PdfPTable tabla = new PdfPTable(encabezados.length);
             tabla.setWidthPercentage(100);
-            String[] encabezados = {"ID", "Código", "Nombre", "Categoría", "Precio", "Stock"};
             for (String encabezado : encabezados) {
                 tabla.addCell(encabezado);
             }
-            for (Producto producto : productos) {
-                tabla.addCell(texto(producto.getId()));
-                tabla.addCell(texto(producto.getCodigo()));
-                tabla.addCell(texto(producto.getNombre()));
-                tabla.addCell(texto(producto.getCategoria()));
-                tabla.addCell(texto(producto.getPrecio()));
-                tabla.addCell(texto(producto.getStock()));
+            for (List<Object> fila : filas) {
+                for (Object valor : fila) {
+                    tabla.addCell(texto(valor));
+                }
             }
             document.add(tabla);
             document.close();
@@ -46,7 +54,7 @@ public class PdfReportService {
             if (document.isOpen()) {
                 document.close();
             }
-            throw new IllegalStateException("No se pudo generar el PDF del inventario", e);
+            throw new IllegalStateException("No se pudo generar el PDF: " + titulo, e);
         }
     }
 
