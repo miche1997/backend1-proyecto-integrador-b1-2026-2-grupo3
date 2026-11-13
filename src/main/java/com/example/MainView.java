@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.function.Function;
 import com.example.model.Administrador;
 import com.example.model.Categoria;
 import com.example.model.Cupones;
+import com.example.model.Pedidos;
 import com.example.model.Producto;
 import com.example.model.Proveedor;
 import com.example.model.Usuario;
@@ -21,6 +23,7 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Anchor;
@@ -37,6 +40,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.jetbrains.kotlin.it.unimi.dsi.fastutil.booleans.F.a;
 
 @PageTitle("Gestión CRUD - Sistema de Inventario")
 @Route("")
@@ -45,6 +49,7 @@ public class MainView extends VerticalLayout {
     private final CrudService crudService;
     private final PdfReportService pdfReportService;
     private Runnable recargarCombosProductos = () -> { };
+    private Runnable recargarCombosPedidos = () -> { };
 
     public MainView(CrudService crudService, PdfReportService pdfReportService) {
         this.crudService = crudService;
@@ -61,11 +66,182 @@ public class MainView extends VerticalLayout {
         tabs.add("Usuarios", crearSeccionUsuarios());
         tabs.add("Cupones", crearSeccionCupones());
         tabs.add("Administradores", crearSeccionAdministrador());
-        // Al cambiar de pestaña se recargan los desplegables (por si se crearon categorías/proveedores nuevos)
-        tabs.addSelectedChangeListener(e -> recargarCombosProductos.run());
+        tabs.add("Pedidos", crearSeccionPedidos());
 
+
+        tabs.addSelectedChangeListener(e -> {
+            recargarCombosProductos.run();
+            recargarCombosPedidos.run();
+        });
         add(new H2("Sistema de Inventario - CRUD"), tabs);
     }
+
+  
+private Component crearSeccionPedidos() {
+        VerticalLayout layout = new VerticalLayout();
+        TextField idField = new TextField("ID Pedido");
+        TextField numeroPedidoField = new TextField("Número Pedido");
+        DatePicker fechaPedidoPicker = new DatePicker("Fecha Pedido");
+        fechaPedidoPicker.setValue(LocalDate.now());
+
+        ComboBox<Usuario> usuarioCombo = new ComboBox<>("Usuario");
+        usuarioCombo.setItemLabelGenerator(u ->
+            (u.getNombre() != null ? u.getNombre() : "") + " " + (u.getApellido() != null ? u.getApellido() : "")
+        );
+
+        ComboBox<Producto> productoCombo = new ComboBox<>("Producto");
+        productoCombo.setItemLabelGenerator(Producto::getNombre);
+
+        ComboBox<Cupones> cuponCombo = new ComboBox<>("Cupón (Opcional)");
+        cuponCombo.setItemLabelGenerator(c -> c.getCodigo() + " (" + c.getPorcentaje() + "%)");
+
+       recargarCombosPedidos = () -> {
+            usuarioCombo.setItems(crudService.listarTodos(Usuario.class));
+            productoCombo.setItems(crudService.listarTodos(Producto.class));
+            cuponCombo.setItems(crudService.listarTodos(Cupones.class));
+        };
+        recargarCombosPedidos.run();
+        ((Runnable) recargarCombosPedidos).run();
+
+        FormLayout form = new FormLayout(
+            idField, numeroPedidoField, fechaPedidoPicker,
+            usuarioCombo, productoCombo, cuponCombo
+        );
+
+        Grid<Pedidos> grid = new Grid<>(Pedidos.class, false);
+        grid.addColumn(Pedidos::getIdPedido).setHeader("ID").setAutoWidth(true);
+        grid.addColumn(Pedidos::getNumeroPedido).setHeader("N° Pedido").setAutoWidth(true);
+        grid.addColumn(Pedidos::getFechaPedido).setHeader("Fecha").setAutoWidth(true);
+        grid.addColumn(this::nombreUsuario).setHeader("Usuario").setAutoWidth(true);
+        grid.addColumn(this::nombreProducto).setHeader("Producto").setAutoWidth(true);
+        grid.addColumn(this::codigoCupon).setHeader("Cupón").setAutoWidth(true);
+
+        Runnable refrescar = () -> grid.setItems(crudService.listarTodos(Pedidos.class));
+        refrescar.run();
+
+        Runnable limpiarFormulario = () -> {
+            limpiar(idField, numeroPedidoField);
+            fechaPedidoPicker.setValue(LocalDate.now());
+            usuarioCombo.clear();
+            productoCombo.clear();
+            cuponCombo.clear();
+        };
+
+        grid.asSingleSelect().addValueChangeListener(e -> {
+            Pedidos ped = e.getValue();
+            if (ped != null) {
+                idField.setValue(ped.getIdPedido() != null ? ped.getIdPedido().toString() : "");
+                numeroPedidoField.setValue(String.valueOf(ped.getNumeroPedido()));
+                fechaPedidoPicker.setValue(ped.getFechaPedido());
+
+                if (ped.getUsuario() != null && ped.getUsuario().getId() != null) {
+                    usuarioCombo.getListDataView().getItems()
+                        .filter(u -> ped.getUsuario().getId().equals(u.getId()))
+                        .findFirst().ifPresent(usuarioCombo::setValue);
+                } else {
+                    usuarioCombo.clear();
+                }
+
+                if (ped.getProducto() != null && ped.getProducto().getId() != null) {
+                    productoCombo.getListDataView().getItems()
+                        .filter(pr -> ped.getProducto().getId().equals(pr.getId()))
+                        .findFirst().ifPresent(productoCombo::setValue);
+                } else {
+                    productoCombo.clear();
+                }
+
+                if (ped.getCupon() != null && ped.getCupon().getId() != null) {
+                    cuponCombo.getListDataView().getItems()
+                        .filter(c -> ped.getCupon().getId().equals(c.getId()))
+                        .findFirst().ifPresent(cuponCombo::setValue);
+                } else {
+                    cuponCombo.clear();
+                }
+            }
+        });
+
+        Button btnCrear = new Button("Crear", e -> {
+            Pedidos ped = new Pedidos(
+                parseInt(numeroPedidoField.getValue()),
+                fechaPedidoPicker.getValue() != null ? fechaPedidoPicker.getValue() : LocalDate.now(),
+                usuarioCombo.getValue(),
+                productoCombo.getValue(),
+                cuponCombo.getValue()
+            );
+            crudService.guardar(ped);
+            refrescar.run();
+            idField.setValue(ped.getIdPedido() != null ? ped.getIdPedido().toString() : "");
+            Notification.show("Pedido guardado con ID: " + ped.getIdPedido());
+        });
+        btnCrear.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button btnConsultar = new Button("Consultar", e -> {
+            Pedidos ped = crudService.buscarPorId(Pedidos.class, parseId(idField));
+            if (ped != null) {
+                grid.asSingleSelect().setValue(ped);
+                Notification.show("Pedido encontrado: #" + ped.getNumeroPedido());
+            } else {
+                Notification.show("Pedido no encontrado");
+            }
+        });
+
+        Button btnActualizar = new Button("Actualizar", e -> {
+            Pedidos ped = crudService.buscarPorId(Pedidos.class, parseId(idField));
+            if (ped != null) {
+                ped.setNumeroPedido(parseInt(numeroPedidoField.getValue()));
+                ped.setFechaPedido(fechaPedidoPicker.getValue());
+                ped.setUsuario(usuarioCombo.getValue());
+                ped.setProducto(productoCombo.getValue());
+                ped.setCupon(cuponCombo.getValue());
+                crudService.actualizar(ped);
+                refrescar.run();
+                Notification.show("Pedido actualizado");
+            } else {
+                Notification.show("ID de pedido no encontrado");
+            }
+        });
+
+        Button btnEliminar = new Button("Eliminar", e -> {
+            if (eliminarConControl(Pedidos.class, parseId(idField))) {
+                refrescar.run();
+                limpiarFormulario.run();
+                Notification.show("Pedido eliminado");
+            }
+        });
+        btnEliminar.addThemeVariants(ButtonVariant.LUMO_ERROR);
+
+        Button btnLimpiar = new Button("Limpiar", e -> {
+            limpiarFormulario.run();
+            grid.asSingleSelect().clear();
+        });
+
+        Component[] descargas = crearBotonesDescarga("pedidos", "Listado de pedidos", Pedidos.class,
+                new String[]{"ID", "N° Pedido", "Fecha", "Usuario", "Producto", "Cupón"},
+                Pedidos::getIdPedido, Pedidos::getNumeroPedido, Pedidos::getFechaPedido,
+                this::nombreUsuario, this::nombreProducto, this::codigoCupon);
+
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar,
+                descargas[0], descargas[1]), grid);
+        return layout;
+    }
+
+    private String nombreUsuario(Pedidos p) {
+        if (p.getUsuario() == null) return "";
+        String nombre = p.getUsuario().getNombre() != null ? p.getUsuario().getNombre() : "";
+        String apellido = p.getUsuario().getApellido() != null ? p.getUsuario().getApellido() : "";
+        return (nombre + " " + apellido).trim();
+    }
+
+    private String nombreProducto(Pedidos p) {
+        return p.getProducto() != null ? p.getProducto().getNombre() : "";
+    }
+
+    private String codigoCupon(Pedidos p) {
+        return p.getCupon() != null ? p.getCupon().getCodigo() : "";
+    
+}
+
+    
 
     // ==========================================
     // 1. PRODUCTOS
@@ -510,7 +686,7 @@ public class MainView extends VerticalLayout {
         refrescar.run();
 
         grid.asSingleSelect() .addValueChangeListener(e -> {
-            Cupones c = e.getOldValue();
+            Cupones c = e.getValue();
             if (c != null) {
                 idField.setValue(c.getId() != null ? c.getId().toString() : "");
                 codigoField.setValue(c.getCodigo() != null ? c.getCodigo() : "");
@@ -585,8 +761,11 @@ public class MainView extends VerticalLayout {
         return layout;
     }
     // ==========================================
-    // 6. ADMINISREADOR
+    // 6. ADMINISTRADOR
     // ==========================================
+    /**
+     * @return
+     */
     private Component crearSeccionAdministrador() {
         VerticalLayout layout = new VerticalLayout();
         TextField idField = new TextField("ID");
@@ -610,7 +789,7 @@ public class MainView extends VerticalLayout {
         grid.asSingleSelect().addValueChangeListener(e -> {
             Administrador a = e.getValue();
             if (a != null) {
-                idField.setValue(Long.toString(a.getId()));
+               idField.setValue(a.getId() != null ? a.getId().toString() : "");
                 usuarioField.setValue(a.getUsuarioAdministrador() != null ? a.getUsuarioAdministrador() : "");
                 contrasenaField.setValue(a.getContrasena() != null ? a.getContrasena() : "");
                 estadoField.setValue(a.getEstado() != null ? a.getEstado() : "");
