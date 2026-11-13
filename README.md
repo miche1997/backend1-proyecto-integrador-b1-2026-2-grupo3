@@ -4,7 +4,6 @@
 Eat And Bite requería una solución centralizada para administrar sus operaciones cotidianas sin depender de manipulación manual propensa a errores. Este sistema implementa un módulo integral de Gestión de Entidades (CRUD) que permite a los administradores crear, consultar, modificar y dar de baja información clave del negocio: Clientes, Proveedores, Productos, Cupones y Administradores. 
 
 ![Vista previa](preview.png)
-![Vista previa 2](Preview2.png)
 
 ## Arquitectura 
 su arquitectura esta basado en un sisitema monolitico en capas en las cuales tenemos definidas :
