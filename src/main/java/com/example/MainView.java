@@ -530,13 +530,19 @@ public class MainView extends VerticalLayout {
             limpiar(idField, codigoField, porcentajeField, usosField, estadoField, fechaCreacionField);
             Notification.show("Cupón eliminado");
         });
+        btnEliminar.addThemeVariants(ButtonVariant.LUMO_ERROR);
+
+        Button btnLimpiar = new Button("Limpiar", e -> {
+            limpiar(idField, codigoField, porcentajeField, usosField, estadoField, fechaCreacionField);
+            grid.asSingleSelect().clear();
+        });
 
         Component[] descargas = crearBotonesDescarga("cupones", "Listado de cupones", Cupones.class,
                 new String[]{"ID", "Código", "Porcentaje", "Usos", "Estado", "Fecha de Creación"},
                 Cupones::getId, Cupones::getCodigo, Cupones::getPorcentaje, Cupones::getUsos,
                 Cupones::getEstado, Cupones::getFechaCreacion);
 
-        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar,
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar,
                 descargas[0], descargas[1]), grid);
         return layout;
     }
@@ -617,6 +623,12 @@ public class MainView extends VerticalLayout {
             limpiar(idField, usuarioField, contrasenaField, estadoField, fechaRegistroField);
             Notification.show("Administrador eliminado");
         });
+        btnEliminar.addThemeVariants(ButtonVariant.LUMO_ERROR);
+
+        Button btnLimpiar = new Button("Limpiar", e -> {
+            limpiar(idField, usuarioField, contrasenaField, estadoField, fechaRegistroField);
+            grid.asSingleSelect().clear();
+        });
 
         Component[] descargas = crearBotonesDescarga("administradores", "Listado de administradores",
                 Administrador.class,
@@ -624,7 +636,7 @@ public class MainView extends VerticalLayout {
                 Administrador::getId, Administrador::getUsuarioAdministrador, Administrador::getEstado,
                 Administrador::getFechaRegistro);
 
-        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar,
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar,
                 descargas[0], descargas[1]), grid);
         return layout;
     }
