@@ -155,17 +155,23 @@ public class MainView extends VerticalLayout {
 
         StreamResource excelResource = new StreamResource("productos.xlsx", this::crearExcelProductos);
         excelResource.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        Anchor descargarExcel = new Anchor(excelResource, "Descargar Excel");
+        Anchor descargarExcel = new Anchor(excelResource, "");
         descargarExcel.getElement().setAttribute("download", true);
+        Button btnExcel = new Button("Descargar Excel");
+        btnExcel.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+        descargarExcel.add(btnExcel);
 
         StreamResource pdfResource = new StreamResource("productos.pdf", () ->
                 new ByteArrayInputStream(pdfReportService.generarReporteProductos(crudService.listarTodos(Producto.class))));
         pdfResource.setContentType("application/pdf");
-        Anchor descargarPdf = new Anchor(pdfResource, "Descargar PDF");
+        Anchor descargarPdf = new Anchor(pdfResource, "");
         descargarPdf.getElement().setAttribute("download", true);
+        Button btnPdf = new Button("Descargar PDF");
+        btnPdf.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+        descargarPdf.add(btnPdf);
 
-        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar),
-                new HorizontalLayout(descargarExcel, descargarPdf), grid);
+        layout.add(form, crearAcciones(btnCrear, btnConsultar, btnActualizar, btnEliminar, btnLimpiar,
+                descargarExcel, descargarPdf), grid);
         return layout;
     }
 
@@ -669,7 +675,7 @@ public class MainView extends VerticalLayout {
         }
     }
 
-    private HorizontalLayout crearAcciones(Button... botones) {
+    private HorizontalLayout crearAcciones(Component... botones) {
         HorizontalLayout layout = new HorizontalLayout(botones);
         layout.getStyle().set("flex-wrap", "wrap");
         return layout;
